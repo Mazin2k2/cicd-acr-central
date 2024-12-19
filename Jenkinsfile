@@ -1,44 +1,30 @@
 pipeline {
     agent any
 
-    environment {
-        ACR_NAME = 'testacr0909'
-        ACR_URL = "${ACR_NAME}.azurecr.io"
-        ACR_USERNAME = 'testacr0909'
-        ACR_PASSWORD = credentials('acr-access-key')  // Jenkins secret containing your ACR password
-        ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'  // Your ACR email
-        GITHUB_REPO_CENTRAL = 'https://github.com/Mazin2k2/cicd-acr-central.git'
-        GITHUB_REPO_APP1 = 'https://github.com/Mazin2k2/cicd-acr-app1.git'
-        GITHUB_REPO_APP2 = 'https://github.com/Mazin2k2/cicd-acr-app2.git'
-        KUBE_CONFIG = credentials('aks-kubeconfig')  // Jenkins secret containing your AKS kubeconfig
-        HELM_CHART_PATH_APP1 = 'helm/mypyapp'  // Path to Helm chart for app1
-        HELM_CHART_PATH_APP2 = 'helm/mypyapp1' // Path to Helm chart for app2
+    parameters {
+        choice(name: 'APP_TO_DEPLOY', choices: ['app1', 'app2'], description: 'Select which app to deploy')
     }
 
-    parameters {
-        choice(name: 'APP_SELECTION', choices: ['app1', 'app2'], description: 'Choose the app to deploy')
+    environment {
+        // You can define your environment variables here (e.g., ACR_PASSWORD, KUBECONFIG) if needed
     }
 
     stages {
         stage('Checkout Central Repo') {
             steps {
-                script {
-                    // Checkout the central repo that contains Helm charts
-                    git branch: 'main', url: "${GITHUB_REPO_CENTRAL}"
-                }
+                checkout scm
             }
         }
 
         stage('Checkout App Code') {
             steps {
                 script {
-                    // Checkout the selected app repository
-                    if (params.APP_SELECTION == 'app1') {
+                    if (params.APP_TO_DEPLOY == 'app1') {
                         echo 'Checking out app1 repository'
-                        git branch: 'main', url: "${GITHUB_REPO_APP1}"
+                        git 'https://github.com/Mazin2k2/cicd-acr-app1.git'
                     } else {
                         echo 'Checking out app2 repository'
-                        git branch: 'main', url: "${GITHUB_REPO_APP2}"
+                        git 'https://github.com/Mazin2k2/cicd-acr-app2.git'
                     }
                 }
             }
@@ -47,10 +33,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build the Docker image for the selected app
-                    def imageName = "${ACR_URL}/${params.APP_SELECTION}:latest"
-                    echo "Building Docker image for ${params.APP_SELECTION}"
-                    sh "docker build -t ${imageName} ."
+                    echo "Building Docker image for ${params.APP_TO_DEPLOY}"
+                    sh "docker build -t testacr0909.azurecr.io/${params.APP_TO_DEPLOY}:latest ."
                 }
             }
         }
@@ -58,10 +42,8 @@ pipeline {
         stage('Push Docker Image to ACR') {
             steps {
                 script {
-                    def imageName = "${ACR_URL}/${params.APP_SELECTION}:latest"
-                    echo "Pushing Docker image to ACR: ${imageName}"
-                    // Push the Docker image to ACR
-                    sh "docker push ${imageName}"
+                    echo "Pushing Docker image to ACR: testacr0909.azurecr.io/${params.APP_TO_DEPLOY}:latest"
+                    sh "docker push testacr0909.azurecr.io/${params.APP_TO_DEPLOY}:latest"
                 }
             }
         }
@@ -69,20 +51,15 @@ pipeline {
         stage('Create Docker Registry Secret') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        // Create or update the Docker registry secret in AKS
-                        echo "Creating or updating Docker registry secret in AKS"
-                        sh """
-                            export KUBECONFIG=${KUBECONFIG}
-
-                            kubectl create secret docker-registry regcred \
-                            --docker-server=${ACR_URL} \
-                            --docker-username=${ACR_USERNAME} \
-                            --docker-password=${ACR_PASSWORD} \
-                            --docker-email=${ACR_EMAIL} \
+                    echo "Creating or updating Docker registry secret in AKS"
+                    sh """
+                        kubectl create secret docker-registry regcred \
+                            --docker-server=testacr0909.azurecr.io \
+                            --docker-username=testacr0909 \
+                            --docker-password=\$ACR_PASSWORD \
+                            --docker-email=mazin.abdulkarimrelambda.onmicrosoft.com \
                             --dry-run=client -o yaml | kubectl apply -f -
-                        """
-                    }
+                    """
                 }
             }
         }
@@ -90,18 +67,28 @@ pipeline {
         stage('Deploy to AKS using Helm') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        def imageName = "${ACR_URL}/${params.APP_SELECTION}:latest"
-                        echo "Deploying ${params.APP_SELECTION} to AKS with image: ${imageName}"
+                    echo "Deploying ${params.APP_TO_DEPLOY} to AKS with image: testacr0909.azurecr.io/${params.APP_TO_DEPLOY}:latest"
+                    
+                    // Verify the existence of the chart directory
+                    if (params.APP_TO_DEPLOY == 'app1') {
+                        echo "Checking if helm chart for app1 exists in helm/mypyapp"
+                        sh "ls helm/mypyapp"
+                    } else {
+                        echo "Checking if helm chart for app2 exists in helm/mypyapp1"
+                        sh "ls helm/mypyapp1"
+                    }
 
-                        // Set the Helm chart path based on the selected app
-                        def helmChartPath = params.APP_SELECTION == 'app1' ? HELM_CHART_PATH_APP1 : HELM_CHART_PATH_APP2
-
-                        // Deploy the selected app using Helm
+                    // Deploy with Helm
+                    if (params.APP_TO_DEPLOY == 'app1') {
                         sh """
-                            export KUBECONFIG=${KUBECONFIG}
-                            helm upgrade --install ${params.APP_SELECTION} ${helmChartPath} \
-                            --set appimage=${imageName} \
+                            helm upgrade --install app1 helm/mypyapp \
+                            --set appimage=testacr0909.azurecr.io/app1:latest \
+                            --set apptag=latest
+                        """
+                    } else {
+                        sh """
+                            helm upgrade --install app2 helm/mypyapp1 \
+                            --set appimage=testacr0909.azurecr.io/app2:latest \
                             --set apptag=latest
                         """
                     }
@@ -111,22 +98,15 @@ pipeline {
 
         stage('Clean up Docker Images') {
             steps {
-                script {
-                    // Remove the locally built Docker image
-                    def imageName = "${ACR_URL}/${params.APP_SELECTION}:latest"
-                    echo "Cleaning up Docker image: ${imageName}"
-                    sh "docker rmi ${imageName}"
-                }
+                echo "Cleaning up Docker images"
+                sh "docker rmi testacr0909.azurecr.io/${params.APP_TO_DEPLOY}:latest"
             }
         }
     }
 
     post {
-        success {
-            echo 'The deployment was successful!'
-        }
-        failure {
-            echo 'There was an error during the pipeline execution.'
+        always {
+            echo 'Cleaning up...'
         }
     }
 }
