@@ -119,7 +119,8 @@ pipeline {
 
                             helm upgrade --install ${IMAGE_NAME} ${HELM_CHART_PATH} \
                             --set appimage=${ACR_URL}/${IMAGE_NAME} \
-                            --set apptag=${IMAGE_TAG}
+                            --set apptag=${IMAGE_TAG} \
+                            --debug
                         """
                     }
                 }
