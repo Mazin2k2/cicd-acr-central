@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'APP_TO_DEPLOY', 
+               choices: ['app1', 'app2'], 
+               description: 'Choose which app to deploy')
+    }
+
     environment {
         ACR_NAME = 'testacr0909'
         ACR_URL = "${ACR_NAME}.azurecr.io"
@@ -12,11 +18,6 @@ pipeline {
         GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-azure-jenkins.git'
         KUBE_CONFIG = credentials('aks-kubeconfig')  // Jenkins secret containing your AKS kubeconfig
         HELM_CHART_PATH = ''  // This will be dynamically set based on the app to deploy
-        APP_TO_DEPLOY = 'app1'  // Default app to deploy, can be changed dynamically
-    }
-
-    parameters {
-        choice(name: 'APP_TO_DEPLOY', choices: ['app1', 'app2'], description: 'Choose which app to deploy')
     }
 
     stages {
