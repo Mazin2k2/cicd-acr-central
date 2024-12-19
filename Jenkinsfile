@@ -6,7 +6,17 @@ pipeline {
     }
 
     environment {
-        // You can define your environment variables here (e.g., ACR_PASSWORD, KUBECONFIG) if needed
+        // Define environment variables
+        ACR_NAME = 'testacr0909'
+        ACR_URL = "${ACR_NAME}.azurecr.io"
+        IMAGE_NAME = 'pyimg'
+        IMAGE_TAG = "${env.BUILD_ID}"
+        ACR_USERNAME = 'testacr0909'
+        ACR_PASSWORD = credentials('acr-access-key')  // Jenkins secret containing your ACR password
+        ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'  // Your ACR email
+        GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-azure-jenkins.git'
+        KUBE_CONFIG = credentials('aks-kubeconfig')  // Jenkins secret containing your AKS kubeconfig
+        HELM_CHART_PATH = 'helm/mypyapp'  // Default Helm chart path for app1
     }
 
     stages {
@@ -22,9 +32,13 @@ pipeline {
                     if (params.APP_TO_DEPLOY == 'app1') {
                         echo 'Checking out app1 repository'
                         git 'https://github.com/Mazin2k2/cicd-acr-app1.git'
+                        // Set the correct Helm chart path for app1
+                        env.HELM_CHART_PATH = 'helm/mypyapp'
                     } else {
                         echo 'Checking out app2 repository'
                         git 'https://github.com/Mazin2k2/cicd-acr-app2.git'
+                        // Set the correct Helm chart path for app2
+                        env.HELM_CHART_PATH = 'helm/mypyapp1'
                     }
                 }
             }
@@ -33,8 +47,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    echo "Building Docker image for ${params.APP_TO_DEPLOY}"
-                    sh "docker build -t testacr0909.azurecr.io/${params.APP_TO_DEPLOY}:latest ."
+                    echo "Building Docker image for ${params.APP_TO_DEPLOY} with tag: ${IMAGE_TAG}"
+                    sh "docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
@@ -42,8 +56,8 @@ pipeline {
         stage('Push Docker Image to ACR') {
             steps {
                 script {
-                    echo "Pushing Docker image to ACR: testacr0909.azurecr.io/${params.APP_TO_DEPLOY}:latest"
-                    sh "docker push testacr0909.azurecr.io/${params.APP_TO_DEPLOY}:latest"
+                    echo "Pushing Docker image to ACR: ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker push ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
@@ -54,10 +68,10 @@ pipeline {
                     echo "Creating or updating Docker registry secret in AKS"
                     sh """
                         kubectl create secret docker-registry regcred \
-                            --docker-server=testacr0909.azurecr.io \
-                            --docker-username=testacr0909 \
-                            --docker-password=\$ACR_PASSWORD \
-                            --docker-email=mazin.abdulkarimrelambda.onmicrosoft.com \
+                            --docker-server=${ACR_URL} \
+                            --docker-username=${ACR_USERNAME} \
+                            --docker-password=${ACR_PASSWORD} \
+                            --docker-email=${ACR_EMAIL} \
                             --dry-run=client -o yaml | kubectl apply -f -
                     """
                 }
@@ -67,29 +81,24 @@ pipeline {
         stage('Deploy to AKS using Helm') {
             steps {
                 script {
-                    echo "Deploying ${params.APP_TO_DEPLOY} to AKS with image: testacr0909.azurecr.io/${params.APP_TO_DEPLOY}:latest"
-                    
+                    echo "Deploying ${params.APP_TO_DEPLOY} to AKS with image: ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
+
                     // Verify the existence of the chart directory
-                    if (params.APP_TO_DEPLOY == 'app1') {
-                        echo "Checking if helm chart for app1 exists in helm/mypyapp"
-                        sh "ls helm/mypyapp"
-                    } else {
-                        echo "Checking if helm chart for app2 exists in helm/mypyapp1"
-                        sh "ls helm/mypyapp1"
-                    }
+                    echo "Checking if Helm chart for ${params.APP_TO_DEPLOY} exists at ${HELM_CHART_PATH}"
+                    sh "ls ${HELM_CHART_PATH}"
 
                     // Deploy with Helm
                     if (params.APP_TO_DEPLOY == 'app1') {
                         sh """
-                            helm upgrade --install app1 helm/mypyapp \
-                            --set appimage=testacr0909.azurecr.io/app1:latest \
-                            --set apptag=latest
+                            helm upgrade --install app1 ${HELM_CHART_PATH} \
+                            --set appimage=${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} \
+                            --set apptag=${IMAGE_TAG}
                         """
                     } else {
                         sh """
-                            helm upgrade --install app2 helm/mypyapp1 \
-                            --set appimage=testacr0909.azurecr.io/app2:latest \
-                            --set apptag=latest
+                            helm upgrade --install app2 ${HELM_CHART_PATH} \
+                            --set appimage=${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} \
+                            --set apptag=${IMAGE_TAG}
                         """
                     }
                 }
@@ -99,7 +108,7 @@ pipeline {
         stage('Clean up Docker Images') {
             steps {
                 echo "Cleaning up Docker images"
-                sh "docker rmi testacr0909.azurecr.io/${params.APP_TO_DEPLOY}:latest"
+                sh "docker rmi ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
     }
