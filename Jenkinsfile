@@ -1,23 +1,22 @@
 pipeline {
     agent any
 
-    parameters {
-        choice(name: 'APP_TO_DEPLOY', 
-               choices: ['app1', 'app2'], 
-               description: 'Choose which app to deploy')
-    }
-
     environment {
         ACR_NAME = 'testacr0909'
         ACR_URL = "${ACR_NAME}.azurecr.io"
         IMAGE_NAME = 'pyimg'
         IMAGE_TAG = "${env.BUILD_ID}"
         ACR_USERNAME = 'testacr0909'
-        ACR_PASSWORD = credentials('acr-access-key')  // Jenkins secret containing your ACR password
-        ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'  // Your ACR email
+        ACR_PASSWORD = credentials('acr-access-key')
+        ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'
         GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-azure-jenkins.git'
-        KUBE_CONFIG = credentials('aks-kubeconfig')  // Jenkins secret containing your AKS kubeconfig
-        HELM_CHART_PATH = ''  // This will be dynamically set based on the app to deploy
+        KUBE_CONFIG = credentials('aks-kubeconfig')
+        HELM_CHART_PATH = ''  // Default empty value
+        APP_TO_DEPLOY = 'app1' // Default app
+    }
+
+    parameters {
+        choice(name: 'APP_TO_DEPLOY', choices: ['app1', 'app2'], description: 'Choose which app to deploy')
     }
 
     stages {
@@ -37,7 +36,7 @@ pipeline {
                             branches: [[name: '*/main']],
                             userRemoteConfigs: [[
                                 url: 'https://github.com/Mazin2k2/cicd-acr-app1.git',
-                                credentialsId: 'git_pat'  // Ensure this is the correct credentials ID in Jenkins
+                                credentialsId: 'git_pat'
                             ]]
                         ]
                         env.HELM_CHART_PATH = 'helm/mypyapp'  // Set path for app1 Helm chart
@@ -48,11 +47,12 @@ pipeline {
                             branches: [[name: '*/main']],
                             userRemoteConfigs: [[
                                 url: 'https://github.com/Mazin2k2/cicd-acr-app2.git',
-                                credentialsId: 'git_pat'  // Ensure this is the correct credentials ID in Jenkins
+                                credentialsId: 'git_pat'
                             ]]
                         ]
                         env.HELM_CHART_PATH = 'helm/mypyapp1'  // Set path for app2 Helm chart
                     }
+                    echo "Using Helm chart path: ${env.HELM_CHART_PATH}"
                 }
             }
         }
@@ -91,11 +91,9 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        // Create or update the docker registry secret in AKS
                         sh """
                             export KUBECONFIG=${KUBECONFIG}
 
-                            # Create or update the docker registry secret
                             kubectl create secret docker-registry regcred \
                             --docker-server=${ACR_URL} \
                             --docker-username=${ACR_USERNAME} \
@@ -115,7 +113,6 @@ pipeline {
                         sh """
                             export KUBECONFIG=${KUBECONFIG}
 
-                            # Deploy the Helm chart with the dynamic image and tag
                             helm upgrade --install ${IMAGE_NAME} ${HELM_CHART_PATH} \
                             --set appimage=${ACR_URL}/${IMAGE_NAME} \
                             --set apptag=${IMAGE_TAG}
