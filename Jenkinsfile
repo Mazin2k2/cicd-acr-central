@@ -29,6 +29,7 @@ pipeline {
         stage('Checkout App Code') {
             steps {
                 script {
+                    echo "Selected app to deploy: ${params.APP_TO_DEPLOY}"
                     if (params.APP_TO_DEPLOY == 'app1') {
                         echo 'Checking out app1 repository'
                         checkout scm: [
