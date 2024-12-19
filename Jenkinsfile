@@ -4,7 +4,7 @@ pipeline {
     environment {
         ACR_NAME = 'testacr0909'
         ACR_URL = "${ACR_NAME}.azurecr.io"
-        IMAGE_NAME = 'pyimg'
+        IMAGE_NAME = 'multiappimg'
         IMAGE_TAG = "${env.BUILD_ID}"
         ACR_USERNAME = 'testacr0909'
         ACR_PASSWORD = credentials('acr-access-key')
