@@ -1,0 +1,56 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-web-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: python-web-app
+  template:
+    metadata:
+      labels:
+        app: python-web-app
+    spec:
+      containers:
+      - name: python-web-app
+        image: "{{ .Values.appimage }}:{{ .Values.apptag }}"  # Use dynamic image and tag
+        ports:
+        - containerPort: 8080
+      imagePullSecrets:
+      - name: regcred  # Secret created for accessing ACR
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-web-app-service
+spec:
+  selector:
+    app: python-web-app
+  ports:
+    - protocol: TCP
+      port: 80  # Port exposed outside the cluster
+      targetPort: 8080  # Port that the container is listening on
+  type: LoadBalancer  # Use LoadBalancer for external access (AKS)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: python-web-app-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx  # Specify the IngressClass here
+  rules:
+  - host: "nginxtesting.maizmazin.xyz"  # Replace with your Ingress IP or DNS
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: python-web-app-service
+            port:
+              number: 80
+
