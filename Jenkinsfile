@@ -91,20 +91,39 @@ pipeline {
             }
         }
 
+        // First Clean Up: Delete conflicting resources (service and deployment)
+        stage('Cleanup Existing Resources') {
+            steps {
+                script {
+                    withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
+                        sh '''
+                            export KUBECONFIG=${KUBECONFIG}
+                            
+                            # Clean up the service and deployment if they exist
+                            kubectl delete service python-web-app-service --ignore-not-found
+                            kubectl delete deployment python-web-app --ignore-not-found
+                        '''
+                    }
+                }
+            }
+        }
+
+        // Second Clean Up: Create Docker Registry Secret for AKS
         stage('Create Docker Registry Secret') {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh """
+                        sh '''
                             export KUBECONFIG=${KUBECONFIG}
-
+                            
+                            # Create Docker registry secret to pull image from ACR
                             kubectl create secret docker-registry regcred \
                             --docker-server=${ACR_URL} \
                             --docker-username=${ACR_USERNAME} \
                             --docker-password=${ACR_PASSWORD} \
                             --docker-email=${ACR_EMAIL} \
                             --dry-run=client -o yaml | kubectl apply -f -
-                        """
+                        '''
                     }
                 }
             }
