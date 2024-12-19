@@ -11,7 +11,6 @@ pipeline {
         ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'
         GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-azure-jenkins.git'
         KUBE_CONFIG = credentials('aks-kubeconfig')
-        HELM_CHART_PATH = ''  // Default empty value
         APP_TO_DEPLOY = 'app1' // Default app
     }
 
@@ -30,6 +29,7 @@ pipeline {
             steps {
                 script {
                     echo "Selected app to deploy: ${params.APP_TO_DEPLOY}"
+                    def helmChartPath = '' // Local variable to hold Helm chart path
                     if (params.APP_TO_DEPLOY == 'app1') {
                         echo 'Checking out app1 repository'
                         checkout scm: [
@@ -40,7 +40,7 @@ pipeline {
                                 credentialsId: 'git_pat'
                             ]]
                         ]
-                        env.HELM_CHART_PATH = 'helm/mypyapp'  // Set path for app1 Helm chart
+                        helmChartPath = 'helm/mypyapp'  // Set path for app1 Helm chart
                     } else if (params.APP_TO_DEPLOY == 'app2') {
                         echo 'Checking out app2 repository'
                         checkout scm: [
@@ -51,9 +51,12 @@ pipeline {
                                 credentialsId: 'git_pat'
                             ]]
                         ]
-                        env.HELM_CHART_PATH = 'helm/mypyapp1'  // Set path for app2 Helm chart
+                        helmChartPath = 'helm/mypyapp1'  // Set path for app2 Helm chart
                     }
-                    echo "Using Helm chart path: ${env.HELM_CHART_PATH}"
+                    echo "Using Helm chart path: ${helmChartPath}"
+
+                    // Set the Helm chart path in the environment for later stages
+                    env.HELM_CHART_PATH = helmChartPath
                 }
             }
         }
@@ -107,7 +110,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to AKS using Helm') {
+        stage ('Deploy to AKS using Helm') {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
