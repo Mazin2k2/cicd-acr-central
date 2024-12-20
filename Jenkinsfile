@@ -13,8 +13,8 @@ pipeline {
         GITHUB_REPO_APP2 = 'https://github.com/Mazin2k2/cicd-acr-app2.git'
         GITHUB_REPO_MANIFESTS = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // The repo containing manifests
         KUBE_CONFIG = credentials('aks-kubeconfig')  // Jenkins secret containing your AKS kubeconfig
-        APP_YAML_PATH1 = "${WORKSPACE}/manifests/app1"  // Path for app1
-        APP_YAML_PATH2 = "${WORKSPACE}/manifests/app2"  // Path for app2
+        //APP_YAML_PATH1 = "${WORKSPACE}/manifests/app1"  // Path for app1
+        //APP_YAML_PATH2 = "${WORKSPACE}/manifests/app2"  // Path for app2
     }
 
     parameters {
@@ -111,11 +111,9 @@ pipeline {
 
                             # Navigate to the directory and apply all resources
                             if [ "${params.APP_TO_DEPLOY}" == "app1" ]; then
-                                cd ${APP_YAML_PATH1}
-                                kubectl apply -f .
+                                cd /var/lib/jenkins/workspace/acr-central-app1-app2/manifests/app1 && kubectl apply -f .
                             elif [ "${params.APP_TO_DEPLOY}" == "app2" ]; then
-                                cd ${APP_YAML_PATH2}
-                                kubectl apply -f .
+                                cd /var/lib/jenkins/workspace/acr-central-app1-app2/manifests/app1 && kubectl apply -f .
                             fi
                         """
                     }
