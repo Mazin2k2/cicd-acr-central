@@ -105,7 +105,7 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
                         sh """
-                            export KUBECONFIG=${KUBE_CONFIG}
+                            export KUBECONFIG=${KUBECONFIG}
 
                             if [ "${params.APP_TO_DEPLOY}" == "app1" ]; then
                                 APP_YAML_PATH="manifests/app1/web-app.yaml"
