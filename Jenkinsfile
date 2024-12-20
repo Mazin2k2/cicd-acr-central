@@ -9,8 +9,8 @@ pipeline {
         ACR_USERNAME = 'testacr0909'
         ACR_PASSWORD = credentials('acr-access-key')  // Jenkins secret containing your ACR password
         ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'  // Your ACR email
-        GITHUB_REPO_APP1 = 'https://github.com/Mazin2k2/cicd-azure-jenkins-app1.git'
-        GITHUB_REPO_APP2 = 'https://github.com/Mazin2k2/cicd-azure-jenkins-app2.git'
+        GITHUB_REPO_APP1 = 'https://github.com/Mazin2k2/cicd-acr-app1.git'
+        GITHUB_REPO_APP2 = 'https://github.com/Mazin2k2/cicd-acr-app2.git'
         GITHUB_REPO_MANIFESTS = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // The repo containing manifests
         KUBE_CONFIG = credentials('aks-kubeconfig')  // Jenkins secret containing your AKS kubeconfig
     }
