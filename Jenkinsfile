@@ -5,7 +5,7 @@ pipeline {
         ACR_NAME = 'testacr0909'
         ACR_URL = "${ACR_NAME}.azurecr.io"
         IMAGE_NAME1 = 'pyimg-app1'
-        IMAGE_NAME1 = 'pyimg-app2'
+        IMAGE_NAME2 = 'pyimg-app2'
         IMAGE_TAG = "${env.BUILD_ID}"
         ACR_USERNAME = 'testacr0909'
         ACR_PASSWORD = credentials('acr-access-key')  // Jenkins secret containing your ACR password
