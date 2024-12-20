@@ -4,6 +4,7 @@ pipeline {
     environment {
         ACR_NAME = 'testacr0909'
         ACR_URL = "${ACR_NAME}.azurecr.io"
+        IMAGE_NAME = ''
         IMAGE_TAG = "${env.BUILD_ID}"
         ACR_USERNAME = 'testacr0909'
         ACR_PASSWORD = credentials('acr-access-key')  // Jenkins secret containing your ACR password
@@ -46,15 +47,13 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    def imageName = ''
                     if (params.APP_TO_DEPLOY == 'app1') {
-                        imageName = 'pyimg-app1'
+                        IMAGE_NAME = 'pyimg-app1'
                     } else if (params.APP_TO_DEPLOY == 'app2') {
-                        imageName = 'pyimg-app2'
+                        IMAGE_NAME = 'pyimg-app2'
                     }
 
-                    // Build the Docker image with the selected name
-                    sh "docker build -t ${ACR_URL}/${imageName}:${IMAGE_TAG} ."
+                    sh "docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
@@ -62,15 +61,7 @@ pipeline {
         stage('Push Docker Image to ACR') {
             steps {
                 script {
-                    def imageName = ''
-                    if (params.APP_TO_DEPLOY == 'app1') {
-                        imageName = 'pyimg-app1'
-                    } else if (params.APP_TO_DEPLOY == 'app2') {
-                        imageName = 'pyimg-app2'
-                    }
-
-                    // Push the Docker image to ACR with the selected name
-                    sh "docker push ${ACR_URL}/${imageName}:${IMAGE_TAG}"
+                    sh "docker push ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
@@ -113,23 +104,18 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        def imageName = ''
-                        if (params.APP_TO_DEPLOY == 'app1') {
-                            imageName = 'pyimg-app1'
-                        } else if (params.APP_TO_DEPLOY == 'app2') {
-                            imageName = 'pyimg-app2'
-                        }
-
-                        // Set the IMAGE_NAME environment variable for substitution
-                        sh """
+                        sh """#!/bin/bash
                             export KUBECONFIG=${KUBECONFIG}
-                            export IMAGE_NAME=${imageName}
-                            cd "${WORKSPACE}/manifests"
-                            
-                            # Substitute variables in the YAML files and apply them
-                            envsubst < python-web-app2-deployment.yaml | kubectl apply -f -
-                            envsubst < python-web-app-service2.yaml | kubectl apply -f -
-                            envsubst < python-web-app-ingress2.yaml | kubectl apply -f -
+
+                            # Navigate to the directory and apply all resources
+                            if [[ "${params.APP_TO_DEPLOY}" == "app1" ]]; then
+                                cd "${WORKSPACE}/manifests/app1"
+                            elif [[ "${params.APP_TO_DEPLOY}" == "app2" ]]; then
+                                cd "${WORKSPACE}/manifests/app2"
+                            fi
+
+                            # Substitute environment variables in YAML files and apply them
+                            envsubst < *.yaml | kubectl apply -f -
                         """
                     }
                 }
@@ -139,14 +125,7 @@ pipeline {
         stage('Clean up Docker Images') {
             steps {
                 script {
-                    def imageName = ''
-                    if (params.APP_TO_DEPLOY == 'app1') {
-                        imageName = 'pyimg-app1'
-                    } else if (params.APP_TO_DEPLOY == 'app2') {
-                        imageName = 'pyimg-app2'
-                    }
-
-                    sh "docker rmi ${ACR_URL}/${imageName}:${IMAGE_TAG}"
+                    sh "docker rmi ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
@@ -160,4 +139,4 @@ pipeline {
             echo 'There was an error in the pipeline!'
         }
     }
-}
+} 
