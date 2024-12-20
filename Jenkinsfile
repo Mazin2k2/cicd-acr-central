@@ -39,7 +39,7 @@ pipeline {
         stage('Login to ACR') {
             steps {
                 script {
-                    sh 'docker login ${ACR_URL} -u ${ACR_USERNAME} -p ${ACR_PASSWORD}'
+                    sh "docker login ${ACR_URL} -u ${ACR_USERNAME} -p ${ACR_PASSWORD}"
                 }
             }
         }
@@ -53,7 +53,7 @@ pipeline {
                         IMAGE_NAME = 'pyimg-app2'
                     }
 
-                    sh 'docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} .'
+                    sh "docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
@@ -61,7 +61,7 @@ pipeline {
         stage('Push Docker Image to ACR') {
             steps {
                 script {
-                    sh 'docker push ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}'
+                    sh "docker push ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
@@ -70,13 +70,13 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh '''
+                        sh """
                             export KUBECONFIG=${KUBECONFIG}
                             kubectl delete deployment python-web-app --ignore-not-found=true
                             kubectl delete service python-web-app-service --ignore-not-found=true
                             kubectl delete ingress python-web-app-ingress --ignore-not-found=true
                             kubectl delete secret regcred --ignore-not-found=true
-                        '''
+                        """
                     }
                 }
             }
@@ -86,7 +86,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh '''
+                        sh """
                             export KUBECONFIG=${KUBECONFIG}
                             kubectl create secret docker-registry regcred \
                                 --docker-server=${ACR_URL} \
@@ -94,7 +94,7 @@ pipeline {
                                 --docker-password=${ACR_PASSWORD} \
                                 --docker-email=${ACR_EMAIL} \
                                 --dry-run=client -o yaml | kubectl apply -f -
-                        '''
+                        """
                     }
                 }
             }
@@ -104,8 +104,8 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh '''
-                            export KUBECONFIG=${KUBECONFIG}
+                        sh """
+                            export KUBECONFIG=${KUBE_CONFIG}
 
                             if [ "${params.APP_TO_DEPLOY}" == "app1" ]; then
                                 APP_YAML_PATH="manifests/app1/web-app.yaml"
@@ -117,7 +117,7 @@ pipeline {
                             sed -i "s|{{IMAGE_TAG}}|${IMAGE_TAG}|g" ${APP_YAML_PATH}
 
                             kubectl apply -f ${APP_YAML_PATH} --record
-                        '''
+                        """
                     }
                 }
             }
@@ -126,7 +126,7 @@ pipeline {
         stage('Clean up Docker Images') {
             steps {
                 script {
-                    sh 'docker rmi ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}'
+                    sh "docker rmi ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
