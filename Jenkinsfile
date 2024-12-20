@@ -106,7 +106,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh """
+                        sh """#!/bin/bash
                             export KUBECONFIG=${KUBECONFIG}
 
                             # Navigate to the directory and apply all resources
