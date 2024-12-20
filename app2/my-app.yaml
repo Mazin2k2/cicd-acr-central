@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: python-web-app
+  name: python-web-app2
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: python-web-app
+      app: python-web-app2
   template:
     metadata:
       labels:
-        app: python-web-app
+        app: python-web-app2
     spec:
       containers:
-      - name: python-web-app
+      - name: python-web-app2
         image: "${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"  # Use dynamic image and tag
         ports:
         - containerPort: 8080
@@ -23,10 +23,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: python-web-app-service
+  name: python-web-app-service2
 spec:
   selector:
-    app: python-web-app
+    app: python-web-app2
   ports:
     - protocol: TCP
       port: 80  # Port exposed outside the cluster
@@ -36,7 +36,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: python-web-app-ingress
+  name: python-web-app-ingress2
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
@@ -49,6 +49,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: python-web-app-service
+            name: python-web-app-service2
             port:
               number: 80
