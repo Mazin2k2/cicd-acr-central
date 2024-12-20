@@ -59,9 +59,10 @@ pipeline {
                     }
 
                     // Build Docker image based on selected app
-                    sh """
+                    sh '''
+                        # Ensure using bash for correct syntax
                         docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} .
-                    """
+                    '''
                 }
             }
         }
@@ -69,9 +70,9 @@ pipeline {
         stage('Push Docker Image to ACR') {
             steps {
                 script {
-                    sh """
+                    sh '''
                         docker push ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}
-                    """
+                    '''
                 }
             }
         }
@@ -80,7 +81,8 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh """
+                        sh '''
+                            # Ensure using bash for correct syntax
                             export KUBECONFIG=${KUBECONFIG}
 
                             # Clean up previous deployment, service, ingress, and secret if they exist
@@ -88,7 +90,7 @@ pipeline {
                             kubectl delete service python-web-app-service --ignore-not-found=true
                             kubectl delete ingress python-web-app-ingress --ignore-not-found=true
                             kubectl delete secret regcred --ignore-not-found=true
-                        """
+                        '''
                     }
                 }
             }
@@ -98,7 +100,8 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh """
+                        sh '''
+                            # Ensure using bash for correct syntax
                             export KUBECONFIG=${KUBECONFIG}
 
                             # Create or update the docker registry secret
@@ -108,7 +111,7 @@ pipeline {
                             --docker-password=${ACR_PASSWORD} \
                             --docker-email=${ACR_EMAIL} \
                             --dry-run=client -o yaml | kubectl apply -f -
-                        """
+                        '''
                     }
                 }
             }
@@ -119,6 +122,7 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
                         sh '''
+                            # Ensure using bash for correct syntax
                             export KUBECONFIG=${KUBECONFIG}
 
                             # Set path to the manifest based on the selected app
@@ -143,9 +147,9 @@ pipeline {
         stage('Clean up Docker Images') {
             steps {
                 script {
-                    sh """
+                    sh '''
                         docker rmi ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}
-                    """
+                    '''
                 }
             }
         }
