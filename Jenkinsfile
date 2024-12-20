@@ -125,7 +125,7 @@ pipeline {
                             if [ "${params.APP_TO_DEPLOY}" == "app1" ]; then
                                 APP_YAML_PATH="manifests/app1/web-app.yaml"
                             elif [ "${params.APP_TO_DEPLOY}" == "app2" ]; then
-                                APP_YAML_PATH="manifests/app2/web-app.yaml"
+                                APP_YAML_PATH="manifests/app2/my-app.yaml"
                             fi
 
                             # Substitute the image and tag into the web-app.yaml file dynamically
