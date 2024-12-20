@@ -11,7 +11,6 @@ pipeline {
         ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'
         GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // Central repo for Jenkinsfile and Kubernetes manifests
         KUBE_CONFIG = credentials('aks-kubeconfig')
-        CENTRAL_REPO = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // Central repo for Kubernetes manifests
         APP_TO_DEPLOY = 'app1' // Default app
     }
 
@@ -44,7 +43,10 @@ pipeline {
                         appDir = 'app2'  // Local directory for app2
                     }
                     
-                    // Checkout the selected app repository
+                    // Clean up existing directory before checkout
+                    deleteDir()  // Clean workspace to avoid conflicts
+
+                    // Checkout the selected app repository into the corresponding directory
                     dir(appDir) {
                         checkout scm: [
                             $class: 'GitSCM',
