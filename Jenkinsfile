@@ -113,8 +113,12 @@ pipeline {
                                 APP_YAML_PATH="manifests/app2/my-app.yaml"
                             fi
 
-                            sed -i "s|{{IMAGE_NAME}}|${ACR_URL}/${IMAGE_NAME}|g" ${APP_YAML_PATH}
-                            sed -i "s|{{IMAGE_TAG}}|${IMAGE_TAG}|g" ${APP_YAML_PATH}
+                            # Using Perl as an alternative to sed to avoid 'bad substitution' error
+                            perl -pi -e "s|{{IMAGE_NAME}}|${ACR_URL}/${IMAGE_NAME}|g" ${APP_YAML_PATH}
+                            perl -pi -e "s|{{IMAGE_TAG}}|${IMAGE_TAG}|g" ${APP_YAML_PATH}
+
+                            echo "Applying the following YAML:"
+                            cat ${APP_YAML_PATH}
 
                             kubectl apply -f ${APP_YAML_PATH} --record
                         """
