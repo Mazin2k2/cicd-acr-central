@@ -107,13 +107,17 @@ pipeline {
                         sh """
                             export KUBECONFIG=${KUBECONFIG}
 
+                            # Declare APP_YAML_PATH here before usage
+                            APP_YAML_PATH=""
+
+                            # Set the correct YAML path based on the selected app
                             if [ "${params.APP_TO_DEPLOY}" == "app1" ]; then
                                 APP_YAML_PATH="manifests/app1/web-app.yaml"
                             elif [ "${params.APP_TO_DEPLOY}" == "app2" ]; then
                                 APP_YAML_PATH="manifests/app2/my-app.yaml"
                             fi
 
-                            # Using Perl as an alternative to sed to avoid 'bad substitution' error
+                            # Using Perl to replace placeholders in the YAML file
                             perl -pi -e "s|{{IMAGE_NAME}}|${ACR_URL}/${IMAGE_NAME}|g" ${APP_YAML_PATH}
                             perl -pi -e "s|{{IMAGE_TAG}}|${IMAGE_TAG}|g" ${APP_YAML_PATH}
 
