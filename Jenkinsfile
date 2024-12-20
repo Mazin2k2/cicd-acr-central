@@ -4,7 +4,8 @@ pipeline {
     environment {
         ACR_NAME = 'testacr0909'
         ACR_URL = "${ACR_NAME}.azurecr.io"
-        IMAGE_NAME = 'pyimg'
+        IMAGE_NAME1 = 'pyimg-app1'
+        IMAGE_NAME1 = 'pyimg-app2'
         IMAGE_TAG = "${env.BUILD_ID}"
         ACR_USERNAME = 'testacr0909'
         ACR_PASSWORD = credentials('acr-access-key')  // Jenkins secret containing your ACR password
@@ -50,9 +51,9 @@ pipeline {
             steps {
                 script {
                     if (params.APP_TO_DEPLOY == 'app1') {
-                        IMAGE_NAME = 'pyimg-app1'
+                        IMAGE_NAME1 = 'pyimg-app1'
                     } else if (params.APP_TO_DEPLOY == 'app2') {
-                        IMAGE_NAME = 'pyimg-app2'
+                        IMAGE_NAME2 = 'pyimg-app2'
                     }
 
                     sh "docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} ."
