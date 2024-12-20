@@ -115,7 +115,7 @@ pipeline {
                             elif [[ "${params.APP_TO_DEPLOY}" == "app2" ]]; then
                                 cd "${WORKSPACE}/manifests/app2" 
                             fi
-                            kubectl apply -f .
+                            envsubst < *.yaml | kubectl apply -f -
                         """
                     }
                 }
