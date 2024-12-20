@@ -107,7 +107,7 @@ pipeline {
                         sh """
                             export KUBECONFIG=${KUBECONFIG}
 
-                            # Declare APP_YAML_PATH here before usage
+                            # Declare and initialize APP_YAML_PATH here before usage
                             APP_YAML_PATH=""
 
                             # Set the correct YAML path based on the selected app
