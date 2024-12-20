@@ -9,8 +9,9 @@ pipeline {
         ACR_USERNAME = 'testacr0909'
         ACR_PASSWORD = credentials('acr-access-key')
         ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'
+        GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // Central repo for Jenkinsfile and Kubernetes manifests
         KUBE_CONFIG = credentials('aks-kubeconfig')
-        CENTRAL_REPO = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // Central repo for Jenkinsfile and Kubernetes manifests
+        CENTRAL_REPO = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // Central repo for Kubernetes manifests
         APP_TO_DEPLOY = 'app1' // Default app
     }
 
@@ -19,35 +20,41 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Kubernetes Manifests') {
+        stage('Checkout Central Repo') {
+            steps {
+                git branch: 'main', url: "${GITHUB_REPO}"
+            }
+        }
+
+        stage('Checkout App Repo') {
             steps {
                 script {
                     echo "Selected app to deploy: ${params.APP_TO_DEPLOY}"
-                    def k8sManifestPath = ''  // Local variable to hold Kubernetes manifest path
-
-                    // Checkout the relevant manifest from the central repository
-                    checkout scm: [
-                        $class: 'GitSCM',
-                        branches: [[name: '*/main']],
-                        userRemoteConfigs: [[
-                            url: "${CENTRAL_REPO}",
-                            credentialsId: 'git_pat'
-                        ]]
-                    ]
-
-                    // Set the manifest path based on the selected app
+                    def appRepoUrl = ''
+                    def appDir = ''
+                    
+                    // Determine which app to deploy and checkout its repository
                     if (params.APP_TO_DEPLOY == 'app1') {
-                        echo 'Checking out app1 Kubernetes manifests'
-                        k8sManifestPath = 'app1/web-app.yaml'  // Path for app1 Kubernetes manifest
+                        echo 'Checking out app1 repository'
+                        appRepoUrl = 'https://github.com/Mazin2k2/cicd-acr-app1.git'
+                        appDir = 'app1'  // Local directory for app1
                     } else if (params.APP_TO_DEPLOY == 'app2') {
-                        echo 'Checking out app2 Kubernetes manifests'
-                        k8sManifestPath = 'app2/web-app.yaml'  // Path for app2 Kubernetes manifest
+                        echo 'Checking out app2 repository'
+                        appRepoUrl = 'https://github.com/Mazin2k2/cicd-acr-app2.git'
+                        appDir = 'app2'  // Local directory for app2
                     }
-
-                    echo "Using Kubernetes manifest: ${k8sManifestPath}"
-
-                    // Set the manifest path in the environment for later stages
-                    env.K8S_MANIFEST_PATH = k8sManifestPath
+                    
+                    // Checkout the selected app repository
+                    dir(appDir) {
+                        checkout scm: [
+                            $class: 'GitSCM',
+                            branches: [[name: '*/main']],
+                            userRemoteConfigs: [[
+                                url: appRepoUrl,
+                                credentialsId: 'git_pat'
+                            ]]
+                        ]
+                    }
                 }
             }
         }
@@ -65,8 +72,10 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
+                    def dockerfilePath = "${WORKSPACE}/${params.APP_TO_DEPLOY}/Dockerfile"
+                    echo "Building Docker image from ${dockerfilePath}"
                     sh """
-                        docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} .
+                        docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} -f ${dockerfilePath} ${WORKSPACE}/${params.APP_TO_DEPLOY}
                     """
                 }
             }
@@ -118,7 +127,7 @@ pipeline {
             }
         }
 
-        stage ('Deploy to AKS using kubectl') {
+        stage('Deploy to AKS using kubectl') {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
@@ -126,7 +135,7 @@ pipeline {
                             export KUBECONFIG=${KUBECONFIG}
                             
                             # Apply the selected Kubernetes manifest
-                            kubectl apply -f ${K8S_MANIFEST_PATH}
+                            kubectl apply -f ${WORKSPACE}/app${params.APP_TO_DEPLOY == 'app1' ? 1 : 2}/web-app.yaml
                         """
                     }
                 }
