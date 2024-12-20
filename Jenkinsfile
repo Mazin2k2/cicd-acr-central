@@ -109,21 +109,12 @@ pipeline {
                         sh """
                             export KUBECONFIG=${KUBECONFIG}
 
-                            # Set the correct YAML path based on the selected app
+                            # Directly hardcoding the deployment of the selected app
                             if [ "${params.APP_TO_DEPLOY}" == "app1" ]; then
-                                export APP_YAML_PATH="${APP_YAML_PATH1}"
+                                kubectl apply -f ${APP_YAML_PATH1} --record
                             elif [ "${params.APP_TO_DEPLOY}" == "app2" ]; then
-                                export APP_YAML_PATH="${APP_YAML_PATH2}"
+                                kubectl apply -f ${APP_YAML_PATH2} --record
                             fi
-
-                            # Using Perl to replace placeholders in the YAML file
-                            perl -pi -e "s|{{IMAGE_NAME}}|${ACR_URL}/${IMAGE_NAME}|g" ${APP_YAML_PATH}
-                            perl -pi -e "s|{{IMAGE_TAG}}|${IMAGE_TAG}|g" ${APP_YAML_PATH}
-
-                            echo "Applying the following YAML:"
-                            cat ${APP_YAML_PATH}
-
-                            kubectl apply -f ${APP_YAML_PATH} --record
                         """
                     }
                 }
