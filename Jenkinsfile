@@ -25,14 +25,14 @@ pipeline {
                 script {
                     // Checkout the correct application repository based on selected app
                     if (params.APP_TO_DEPLOY == 'app1') {
-                        git credentialsId: 'github-pat', branch: 'main', url: "${GITHUB_REPO_APP1}"
+                        git credentialsId: 'git_pat', branch: 'main', url: "${GITHUB_REPO_APP1}"
                     } else if (params.APP_TO_DEPLOY == 'app2') {
-                        git credentialsId: 'github-pat', branch: 'main', url: "${GITHUB_REPO_APP2}"
+                        git credentialsId: 'git_pat', branch: 'main', url: "${GITHUB_REPO_APP2}"
                     }
 
                     // Checkout the manifests repo (cicd-acr-central.git) which contains the deployment YAML files
                     dir('manifests') {
-                        git credentialsId: 'github-pat', branch: 'main', url: "${GITHUB_REPO_MANIFESTS}"
+                        git credentialsId: 'git_pat', branch: 'main', url: "${GITHUB_REPO_MANIFESTS}"
                     }
                 }
             }
