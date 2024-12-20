@@ -13,7 +13,8 @@ pipeline {
         GITHUB_REPO_APP2 = 'https://github.com/Mazin2k2/cicd-acr-app2.git'
         GITHUB_REPO_MANIFESTS = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // The repo containing manifests
         KUBE_CONFIG = credentials('aks-kubeconfig')  // Jenkins secret containing your AKS kubeconfig
-        APP_YAML_PATH = ""  // Declare the variable globally here
+        APP_YAML_PATH1 = "${WORKSPACE}/manifests/app1/web-app.yaml"  // Path for app1
+        APP_YAML_PATH2 = "${WORKSPACE}/manifests/app2/my-app.yaml"  // Path for app2
     }
 
     parameters {
@@ -110,9 +111,9 @@ pipeline {
 
                             # Set the correct YAML path based on the selected app
                             if [ "${params.APP_TO_DEPLOY}" == "app1" ]; then
-                                export APP_YAML_PATH="manifests/app1/web-app.yaml"
+                                export APP_YAML_PATH="${APP_YAML_PATH1}"
                             elif [ "${params.APP_TO_DEPLOY}" == "app2" ]; then
-                                export APP_YAML_PATH="manifests/app2/my-app.yaml"
+                                export APP_YAML_PATH="${APP_YAML_PATH2}"
                             fi
 
                             # Using Perl to replace placeholders in the YAML file
