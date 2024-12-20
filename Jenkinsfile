@@ -111,9 +111,9 @@ pipeline {
 
                             # Navigate to the directory and apply all resources
                             if [ "${params.APP_TO_DEPLOY}" == "app1" ]; then
-                                cd /var/lib/jenkins/workspace/acr-central-app1-app2/manifests/app1 && kubectl apply -f .
+                                cd "${WORKSPACE}/manifests/app1" && kubectl apply -f .
                             elif [ "${params.APP_TO_DEPLOY}" == "app2" ]; then
-                                cd /var/lib/jenkins/workspace/acr-central-app1-app2/manifests/app1 && kubectl apply -f .
+                                cd "${WORKSPACE}/manifests/app2" && kubectl apply -f .
                             fi
                         """
                     }
