@@ -4,7 +4,8 @@ pipeline {
     environment {
         ACR_NAME = 'testacr0909'
         ACR_URL = "${ACR_NAME}.azurecr.io"
-        IMAGE_NAME = ''
+        IMAGE_NAME1 = 'pyimg-app1'
+        IMAGE_NAME2 = 'pyimg-app2'
         IMAGE_TAG = "${env.BUILD_ID}"
         ACR_USERNAME = 'testacr0909'
         ACR_PASSWORD = credentials('acr-access-key')  // Jenkins secret containing your ACR password
@@ -48,12 +49,10 @@ pipeline {
             steps {
                 script {
                     if (params.APP_TO_DEPLOY == 'app1') {
-                        IMAGE_NAME = 'pyimg-app1'
+                        sh "docker build -t ${ACR_URL}/${IMAGE_NAME1}:${IMAGE_TAG} ."
                     } else if (params.APP_TO_DEPLOY == 'app2') {
-                        IMAGE_NAME = 'pyimg-app2'
+                        sh "docker build -t ${ACR_URL}/${IMAGE_NAME2}:${IMAGE_TAG} ."
                     }
-
-                    sh "docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
@@ -61,7 +60,11 @@ pipeline {
         stage('Push Docker Image to ACR') {
             steps {
                 script {
-                    sh "docker push ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    if (params.APP_TO_DEPLOY == 'app1') {
+                        sh "docker push ${ACR_URL}/${IMAGE_NAME1}:${IMAGE_TAG}"
+                    } else if (params.APP_TO_DEPLOY == 'app2') {
+                        sh "docker push ${ACR_URL}/${IMAGE_NAME2}:${IMAGE_TAG}"
+                    }
                 }
             }
         }
@@ -110,7 +113,7 @@ pipeline {
                             # Navigate to the directory and apply all resources
                             if [[ "${params.APP_TO_DEPLOY}" == "app1" ]]; then
                                 cd "${WORKSPACE}/manifests/app1"
-                            elif [[ "${params.APP_TO_DEPLOY}" == "app2" ]]; then
+                            elif [[ "${params.APP _TO_DEPLOY}" == "app2" ]]; then
                                 cd "${WORKSPACE}/manifests/app2"
                             fi
 
@@ -125,7 +128,11 @@ pipeline {
         stage('Clean up Docker Images') {
             steps {
                 script {
-                    sh "docker rmi ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    if (params.APP_TO_DEPLOY == 'app1') {
+                        sh "docker rmi ${ACR_URL}/${IMAGE_NAME1}:${IMAGE_TAG}"
+                    } else if (params.APP_TO_DEPLOY == 'app2') {
+                        sh "docker rmi ${ACR_URL}/${IMAGE_NAME2}:${IMAGE_TAG}"
+                    }
                 }
             }
         }
@@ -139,4 +146,4 @@ pipeline {
             echo 'There was an error in the pipeline!'
         }
     }
-} 
+}
