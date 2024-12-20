@@ -113,7 +113,7 @@ pipeline {
                             # Navigate to the directory and apply all resources
                             if [[ "${params.APP_TO_DEPLOY}" == "app1" ]]; then
                                 cd "${WORKSPACE}/manifests/app1"
-                            elif [[ "${params.APP _TO_DEPLOY}" == "app2" ]]; then
+                            elif [[ "${params.APP_TO_DEPLOY}" == "app2" ]]; then
                                 cd "${WORKSPACE}/manifests/app2"
                             fi
 
