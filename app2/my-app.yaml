@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: python-web-app2
-        image: "${ACR_URL}/${IMAGE_NAME2}:${IMAGE_TAG}"  # Use dynamic image and tag
+        image: "${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"  # Use dynamic image and tag
         ports:
         - containerPort: 8080
       imagePullSecrets:
