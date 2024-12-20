@@ -9,7 +9,7 @@ pipeline {
         ACR_USERNAME = 'testacr0909'
         ACR_PASSWORD = credentials('acr-access-key')
         ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'
-        GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // Central repo for Jenkinsfile and Kubernetes manifests
+        GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // Central repo for Kubernetes manifests
         KUBE_CONFIG = credentials('aks-kubeconfig')
         APP_TO_DEPLOY = 'app1' // Default app
     }
@@ -19,13 +19,13 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Central Repo') {
+        stage('Checkout Central Repo (Kubernetes Manifests)') {
             steps {
                 git branch: 'main', url: "${GITHUB_REPO}"
             }
         }
 
-        stage('Checkout App Repo') {
+        stage('Checkout App Repo (App Code)') {
             steps {
                 script {
                     echo "Selected app to deploy: ${params.APP_TO_DEPLOY}"
@@ -136,7 +136,7 @@ pipeline {
                         sh """
                             export KUBECONFIG=${KUBECONFIG}
                             
-                            # Apply the selected Kubernetes manifest
+                            # Apply the selected Kubernetes manifest from the central repo
                             kubectl apply -f ${WORKSPACE}/app${params.APP_TO_DEPLOY == 'app1' ? 1 : 2}/web-app.yaml
                         """
                     }
