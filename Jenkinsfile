@@ -4,8 +4,6 @@ pipeline {
     environment {
         ACR_NAME = 'testacr0909'
         ACR_URL = "${ACR_NAME}.azurecr.io"
-        IMAGE_NAME1 = 'pyimg-app1'
-        IMAGE_NAME2 = 'pyimg-app2'
         IMAGE_TAG = "${env.BUILD_ID}"
         ACR_USERNAME = 'testacr0909'
         ACR_PASSWORD = credentials('acr-access-key')  // Jenkins secret containing your ACR password
@@ -14,8 +12,6 @@ pipeline {
         GITHUB_REPO_APP2 = 'https://github.com/Mazin2k2/cicd-acr-app2.git'
         GITHUB_REPO_MANIFESTS = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // The repo containing manifests
         KUBE_CONFIG = credentials('aks-kubeconfig')  // Jenkins secret containing your AKS kubeconfig
-        //APP_YAML_PATH1 = "${WORKSPACE}/manifests/app1"  // Path for app1
-        //APP_YAML_PATH2 = "${WORKSPACE}/manifests/app2"  // Path for app2
     }
 
     parameters {
@@ -50,13 +46,15 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
+                    def imageName = ''
                     if (params.APP_TO_DEPLOY == 'app1') {
-                        IMAGE_NAME1 = 'pyimg-app1'
+                        imageName = 'pyimg-app1'
                     } else if (params.APP_TO_DEPLOY == 'app2') {
-                        IMAGE_NAME2 = 'pyimg-app2'
+                        imageName = 'pyimg-app2'
                     }
 
-                    sh "docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} ."
+                    // Build the Docker image with the selected name
+                    sh "docker build -t ${ACR_URL}/${imageName}:${IMAGE_TAG} ."
                 }
             }
         }
@@ -64,7 +62,15 @@ pipeline {
         stage('Push Docker Image to ACR') {
             steps {
                 script {
-                    sh "docker push ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    def imageName = ''
+                    if (params.APP_TO_DEPLOY == 'app1') {
+                        imageName = 'pyimg-app1'
+                    } else if (params.APP_TO_DEPLOY == 'app2') {
+                        imageName = 'pyimg-app2'
+                    }
+
+                    // Push the Docker image to ACR with the selected name
+                    sh "docker push ${ACR_URL}/${imageName}:${IMAGE_TAG}"
                 }
             }
         }
@@ -107,16 +113,23 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh """#!/bin/bash
-                            export KUBECONFIG=${KUBECONFIG}
+                        def imageName = ''
+                        if (params.APP_TO_DEPLOY == 'app1') {
+                            imageName = 'pyimg-app1'
+                        } else if (params.APP_TO_DEPLOY == 'app2') {
+                            imageName = 'pyimg-app2'
+                        }
 
-                            # Navigate to the directory and apply all resources
-                            if [[ "${params.APP_TO_DEPLOY}" == "app1" ]]; then
-                                cd "${WORKSPACE}/manifests/app1" 
-                            elif [[ "${params.APP_TO_DEPLOY}" == "app2" ]]; then
-                                cd "${WORKSPACE}/manifests/app2" 
-                            fi
-                            envsubst < *.yaml | kubectl apply -f -
+                        // Set the IMAGE_NAME environment variable for substitution
+                        sh """
+                            export KUBECONFIG=${KUBECONFIG}
+                            export IMAGE_NAME=${imageName}
+                            cd "${WORKSPACE}/manifests"
+                            
+                            # Substitute variables in the YAML files and apply them
+                            envsubst < python-web-app2-deployment.yaml | kubectl apply -f -
+                            envsubst < python-web-app-service2.yaml | kubectl apply -f -
+                            envsubst < python-web-app-ingress2.yaml | kubectl apply -f -
                         """
                     }
                 }
@@ -126,7 +139,14 @@ pipeline {
         stage('Clean up Docker Images') {
             steps {
                 script {
-                    sh "docker rmi ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    def imageName = ''
+                    if (params.APP_TO_DEPLOY == 'app1') {
+                        imageName = 'pyimg-app1'
+                    } else if (params.APP_TO_DEPLOY == 'app2') {
+                        imageName = 'pyimg-app2'
+                    }
+
+                    sh "docker rmi ${ACR_URL}/${imageName}:${IMAGE_TAG}"
                 }
             }
         }
