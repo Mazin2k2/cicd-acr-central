@@ -110,11 +110,12 @@ pipeline {
                             export KUBECONFIG=${KUBECONFIG}
 
                             # Navigate to the directory and apply all resources
-                            if [ "${params.APP_TO_DEPLOY}" -eq "app1" ]; then
-                                cd "${WORKSPACE}/manifests/app1" && kubectl apply -f .
-                            elif [ "${params.APP_TO_DEPLOY}" -eq "app2" ]; then
-                                cd "${WORKSPACE}/manifests/app2" && kubectl apply -f .
+                            if [[ "${params.APP_TO_DEPLOY}" == "app1" ]]; then
+                                cd "${WORKSPACE}/manifests/app1" 
+                            elif [[ "${params.APP_TO_DEPLOY}" == "app2" ]]; then
+                                cd "${WORKSPACE}/manifests/app2" 
                             fi
+                            kubectl apply -f .
                         """
                     }
                 }
