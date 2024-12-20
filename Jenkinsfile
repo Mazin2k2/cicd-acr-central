@@ -9,7 +9,7 @@ pipeline {
         ACR_USERNAME = 'testacr0909'
         ACR_PASSWORD = credentials('acr-access-key')
         ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'
-        GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-acr-central.git'  // Central repo for Kubernetes manifests
+        GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-azure-jenkins.git'
         KUBE_CONFIG = credentials('aks-kubeconfig')
         APP_TO_DEPLOY = 'app1' // Default app
     }
@@ -19,44 +19,44 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Central Repo (Kubernetes Manifests)') {
+        stage('Checkout Code') {
             steps {
                 git branch: 'main', url: "${GITHUB_REPO}"
             }
         }
 
-        stage('Checkout App Repo (App Code)') {
+        stage('Checkout App Code') {
             steps {
                 script {
                     echo "Selected app to deploy: ${params.APP_TO_DEPLOY}"
-                    def appRepoUrl = ''
-                    def appDir = ''
-                    
-                    // Determine which app to deploy and checkout its repository
+                    def appYamlPath = '' // Local variable to hold the app YAML file path
                     if (params.APP_TO_DEPLOY == 'app1') {
                         echo 'Checking out app1 repository'
-                        appRepoUrl = 'https://github.com/Mazin2k2/cicd-acr-app1.git'
-                        appDir = 'app1'  // Local directory for app1
-                    } else if (params.APP_TO_DEPLOY == 'app2') {
-                        echo 'Checking out app2 repository'
-                        appRepoUrl = 'https://github.com/Mazin2k2/cicd-acr-app2.git'
-                        appDir = 'app2'  // Local directory for app2
-                    }
-                    
-                    // Clean up existing directory before checkout
-                    deleteDir()  // Clean workspace to avoid conflicts
-
-                    // Checkout the selected app repository into the corresponding directory
-                    dir(appDir) {
                         checkout scm: [
                             $class: 'GitSCM',
                             branches: [[name: '*/main']],
                             userRemoteConfigs: [[
-                                url: appRepoUrl,
+                                url: 'https://github.com/Mazin2k2/cicd-acr-app1.git',
                                 credentialsId: 'git_pat'
                             ]]
                         ]
+                        appYamlPath = 'app1/web-app.yaml'  // Path for app1 YAML file
+                    } else if (params.APP_TO_DEPLOY == 'app2') {
+                        echo 'Checking out app2 repository'
+                        checkout scm: [
+                            $class: 'GitSCM',
+                            branches: [[name: '*/main']],
+                            userRemoteConfigs: [[
+                                url: 'https://github.com/Mazin2k2/cicd-acr-app2.git',
+                                credentialsId: 'git_pat'
+                            ]]
+                        ]
+                        appYamlPath = 'app2/web-app.yaml'  // Path for app2 YAML file
                     }
+                    echo "Using app YAML file: ${appYamlPath}"
+
+                    // Set the app YAML file path in the environment for later stages
+                    env.APP_YAML_PATH = appYamlPath
                 }
             }
         }
@@ -74,10 +74,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    def dockerfilePath = "${WORKSPACE}/${params.APP_TO_DEPLOY}/Dockerfile"
-                    echo "Building Docker image from ${dockerfilePath}"
                     sh """
-                        docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} -f ${dockerfilePath} ${WORKSPACE}/${params.APP_TO_DEPLOY}
+                        docker build -t ${ACR_URL}/${IMAGE_NAME}:${IMAGE_TAG} .
                     """
                 }
             }
@@ -93,6 +91,7 @@ pipeline {
             }
         }
 
+        // First Clean Up: Delete conflicting resources (service and deployment)
         stage('Cleanup Existing Resources') {
             steps {
                 script {
@@ -109,6 +108,7 @@ pipeline {
             }
         }
 
+        // Second Clean Up: Create Docker Registry Secret for AKS
         stage('Create Docker Registry Secret') {
             steps {
                 script {
@@ -135,9 +135,13 @@ pipeline {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
                         sh """
                             export KUBECONFIG=${KUBECONFIG}
-                            
-                            # Apply the selected Kubernetes manifest from the central repo
-                            kubectl apply -f ${WORKSPACE}/app${params.APP_TO_DEPLOY == 'app1' ? 1 : 2}/web-app.yaml
+
+                            # Substitute the image and tag into the deployment YAML file dynamically
+                            sed -i 's|{{IMAGE_NAME}}|${ACR_URL}/${IMAGE_NAME}|g' ${APP_YAML_PATH}
+                            sed -i 's|{{IMAGE_TAG}}|${IMAGE_TAG}|g' ${APP_YAML_PATH}
+
+                            # Deploy to AKS using kubectl
+                            kubectl apply -f ${APP_YAML_PATH} --record
                         """
                     }
                 }
@@ -157,7 +161,7 @@ pipeline {
 
     post {
         success {
-            echo 'Docker image successfully built, pushed to ACR, secret created, and deployed using Kubernetes manifests to AKS!'
+            echo 'Docker image successfully built, pushed to ACR, secret created, and deployed using kubectl to AKS!'
         }
         failure {
             echo 'There was an error in the pipeline!'
