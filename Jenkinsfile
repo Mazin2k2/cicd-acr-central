@@ -11,6 +11,7 @@ pipeline {
         ACR_EMAIL = 'mazin.abdulkarimrelambda.onmicrosoft.com'
         GITHUB_REPO = 'https://github.com/Mazin2k2/cicd-azure-jenkins.git'
         KUBE_CONFIG = credentials('aks-kubeconfig')
+        CENTRAL_REPO = 'https://github.com/Mazin2k2/cicd-k8s-manifests.git'  // Central repo for Kubernetes manifests
         APP_TO_DEPLOY = 'app1' // Default app
     }
 
@@ -25,38 +26,38 @@ pipeline {
             }
         }
 
-        stage('Checkout App Code') {
+        stage('Checkout Kubernetes Manifests') {
             steps {
                 script {
                     echo "Selected app to deploy: ${params.APP_TO_DEPLOY}"
-                    def helmChartPath = '' // Local variable to hold Helm chart path
+                    def k8sManifestPath = ''  // Local variable to hold Kubernetes manifest path
                     if (params.APP_TO_DEPLOY == 'app1') {
-                        echo 'Checking out app1 repository'
+                        echo 'Checking out app1 Kubernetes manifests'
                         checkout scm: [
                             $class: 'GitSCM',
                             branches: [[name: '*/main']],
                             userRemoteConfigs: [[
-                                url: 'https://github.com/Mazin2k2/cicd-acr-app1.git',
+                                url: "${CENTRAL_REPO}",
                                 credentialsId: 'git_pat'
                             ]]
                         ]
-                        helmChartPath = 'helm/mypyapp'  // Set path for app1 Helm chart
+                        k8sManifestPath = 'app1/web-app.yaml'  // Path for app1 Kubernetes manifest
                     } else if (params.APP_TO_DEPLOY == 'app2') {
-                        echo 'Checking out app2 repository'
+                        echo 'Checking out app2 Kubernetes manifests'
                         checkout scm: [
                             $class: 'GitSCM',
                             branches: [[name: '*/main']],
                             userRemoteConfigs: [[
-                                url: 'https://github.com/Mazin2k2/cicd-acr-app2.git',
+                                url: "${CENTRAL_REPO}",
                                 credentialsId: 'git_pat'
                             ]]
                         ]
-                        helmChartPath = 'helm/mypyapp1'  // Set path for app2 Helm chart
+                        k8sManifestPath = 'app2/web-app.yaml'  // Path for app2 Kubernetes manifest
                     }
-                    echo "Using Helm chart path: ${helmChartPath}"
+                    echo "Using Kubernetes manifest: ${k8sManifestPath}"
 
-                    // Set the Helm chart path in the environment for later stages
-                    env.HELM_CHART_PATH = helmChartPath
+                    // Set the manifest path in the environment for later stages
+                    env.K8S_MANIFEST_PATH = k8sManifestPath
                 }
             }
         }
@@ -91,7 +92,6 @@ pipeline {
             }
         }
 
-        // First Clean Up: Delete conflicting resources (service and deployment)
         stage('Cleanup Existing Resources') {
             steps {
                 script {
@@ -108,7 +108,6 @@ pipeline {
             }
         }
 
-        // Second Clean Up: Create Docker Registry Secret for AKS
         stage('Create Docker Registry Secret') {
             steps {
                 script {
@@ -129,17 +128,15 @@ pipeline {
             }
         }
 
-        stage ('Deploy to AKS using Helm') {
+        stage ('Deploy to AKS using kubectl') {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'aks-kubeconfig', variable: 'KUBECONFIG')]) {
                         sh """
                             export KUBECONFIG=${KUBECONFIG}
-
-                            helm upgrade --install ${IMAGE_NAME} ${HELM_CHART_PATH} \
-                            --set appimage=${ACR_URL}/${IMAGE_NAME} \
-                            --set apptag=${IMAGE_TAG} \
-                            --debug
+                            
+                            # Apply the selected Kubernetes manifest
+                            kubectl apply -f ${K8S_MANIFEST_PATH}
                         """
                     }
                 }
@@ -159,7 +156,7 @@ pipeline {
 
     post {
         success {
-            echo 'Docker image successfully built, pushed to ACR, secret created, and deployed using Helm to AKS!'
+            echo 'Docker image successfully built, pushed to ACR, secret created, and deployed using Kubernetes manifests to AKS!'
         }
         failure {
             echo 'There was an error in the pipeline!'
